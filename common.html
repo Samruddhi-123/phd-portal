@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Common Resources — AcSIR</title>
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+</head>
+<body>
+<div id="navbar-root"></div>
+<div class="main">
+  <div class="page-header">
+    <div class="container">
+      <h1>Common Resources</h1>
+      <p>Handbook, notices, course structure, and milestone guide</p>
+    </div>
+  </div>
+  <div class="container">
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;">
+
+      <!-- LEFT COLUMN -->
+      <div>
+        <div class="card">
+          <div class="card-header"><h2>📢 Announcements</h2></div>
+          <div class="card-body" id="anns-body">
+            <div class="spinner-lg" style="margin:0 auto;"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2>📚 Course Structure</h2></div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Category</th><th>Credits Required</th><th>Description</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><strong>Core</strong></td><td>12</td><td>Mandatory discipline-specific courses</td></tr>
+                  <tr><td><strong>Elective</strong></td><td>8</td><td>Student-chosen from approved list</td></tr>
+                  <tr><td><strong>TIGS</strong></td><td>4</td><td>Teaching, Instrumentation, General, Soft Skills</td></tr>
+                  <tr><td><strong>Audit</strong></td><td>—</td><td>No credit, for learning only</td></tr>
+                  <tr>
+                    <td><strong style="color:var(--teal);">Total Minimum</strong></td>
+                    <td><strong style="color:var(--teal);">24</strong></td>
+                    <td>Required to qualify for thesis submission</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div>
+        <div class="card">
+          <div class="card-header"><h2>📘 AcSIR Handbook</h2></div>
+          <div class="card-body">
+            <p style="font-size:0.875rem;color:var(--g600);margin-bottom:1rem;">
+              Official AcSIR PhD programme regulations and guidelines.
+            </p>
+            <a href="https://www.acsir.res.in" target="_blank" class="btn btn-navy" style="width:100%;justify-content:center;">
+              🌐 AcSIR Website
+            </a>
+          </div>
+        </div>
+
+        <!-- TIGS Credits — populated by JS in init() -->
+        <div class="card">
+          <div class="card-header"><h2>🏅 TIGS Credits</h2></div>
+          <div class="card-body" id="tigs-body"></div>
+        </div>
+
+        <!-- 12 Milestones — populated by JS in init() -->
+        <div class="card">
+          <div class="card-header"><h2>🗓 12 Milestones</h2></div>
+          <div class="card-body" id="milestones-body" style="padding:1rem;"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<footer>Academy of Scientific and Innovative Research (AcSIR) — PhD Student Portal</footer>
+
+<script>
+async function init() {
+  const auth = await requireAuth();
+  if (!auth) return;
+
+  document.getElementById('navbar-root').innerHTML =
+    renderNavbar(auth.profile.role, 'common.html');
+
+  // ── Announcements ────────────────────────────────────────────
+  const { data: anns } = await sb.from('announcements')
+    .select('*').order('created_at', { ascending: false }).limit(10);
+
+  document.getElementById('anns-body').innerHTML = (anns || []).length
+    ? anns.map(a => `
+        <div class="ann-card">
+          <div class="ann-title">${a.title}</div>
+          <div class="ann-meta">
+            Posted by ${a.created_by} ·
+            ${new Date(a.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}
+          </div>
+          <div class="ann-body">${a.content}</div>
+        </div>`).join('')
+    : '<div class="empty-state">No announcements yet.</div>';
+
+  // ── TIGS Credits ─────────────────────────────────────────────
+  // FIX: was using ${...} template literals directly in HTML — moved here.
+  const tigsItems = [
+    ['T', 'Teaching',        '1 credit'],
+    ['I', 'Instrumentation', '1 credit'],
+    ['G', 'General',         '1 credit'],
+    ['S', 'Soft Skills',     '1 credit'],
+  ];
+  document.getElementById('tigs-body').innerHTML = tigsItems.map(([k, v, c]) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;
+      padding:6px 10px;background:var(--g100);border-radius:6px;margin-bottom:6px;">
+      <span style="font-size:0.85rem;"><strong>${k}</strong> — ${v}</span>
+      <span class="badge badge-ongoing">${c}</span>
+    </div>`).join('');
+
+  // ── 12 Milestones ─────────────────────────────────────────────
+  // FIX: was using ${CHECKPOINTS.map(...)} directly in HTML — moved here.
+  document.getElementById('milestones-body').innerHTML = CHECKPOINTS.map((cp, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--g100);">
+      <span style="width:22px;height:22px;background:var(--teal);color:white;border-radius:50%;
+        display:flex;align-items:center;justify-content:center;
+        font-size:0.65rem;font-weight:700;flex-shrink:0;">${i + 1}</span>
+      <span style="font-size:0.82rem;color:var(--g800);">${cp}</span>
+    </div>`).join('');
+}
+
+init();
+</script>
+</body>
+</html>

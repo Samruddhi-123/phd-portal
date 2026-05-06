@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — AcSIR</title>
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+</head>
+<body>
+<div id="navbar-root"></div>
+<div class="main">
+  <div id="loading" class="loading-screen">
+    <div class="spinner-lg"></div>
+    <p style="color:var(--g400);font-size:0.875rem;">Loading admin panel…</p>
+  </div>
+
+  <div id="app" style="display:none;">
+    <div class="page-header">
+      <div class="container">
+        <h1>Administrator Panel</h1>
+        <p>Manage users, view all data, and post announcements</p>
+      </div>
+    </div>
+
+    <div class="container">
+      <!-- Stats -->
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card"><div class="stat-icon" style="background:rgba(10,124,110,0.1);">🎓</div><div><div class="stat-val" id="stat-students">—</div><div class="stat-label">Students</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:rgba(91,33,182,0.08);">👩‍🔬</div><div><div class="stat-val" id="stat-supervisors">—</div><div class="stat-label">Supervisors</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:rgba(201,162,39,0.1);">📋</div><div><div class="stat-val" id="stat-sessions">—</div><div class="stat-label">Sessions</div></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:rgba(220,38,38,0.08);">📢</div><div><div class="stat-val" id="stat-anns">—</div><div class="stat-label">Announcements</div></div></div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" data-group="admin" data-target="tab-users"   onclick="showTab('admin','tab-users')">👥 Users</button>
+        <button class="tab-btn"        data-group="admin" data-target="tab-batches" onclick="showTab('admin','tab-batches')">📊 Batch Table</button>
+        <button class="tab-btn"        data-group="admin" data-target="tab-anns"    onclick="showTab('admin','tab-anns')">📢 Announcements</button>
+      </div>
+
+      <!-- Users Tab -->
+      <div id="tab-users" class="tab-panel active" data-tab-group="admin">
+        <div class="card">
+          <div class="card-header">
+            <h2>User Management</h2>
+            <button class="btn btn-primary btn-sm" onclick="openModal('modal-add-user')">+ Add User</button>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Enrollment</th><th>Session</th><th>Actions</th></tr></thead>
+                <tbody id="users-tbody"><tr><td colspan="6" class="empty-state">Loading…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Batch Table Tab -->
+      <div id="tab-batches" class="tab-panel" data-tab-group="admin">
+        <div class="card">
+          <div class="card-header"><h2>Batch-wise Student Table</h2></div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Session</th><th>Students</th><th>Supervisors</th><th>Count</th></tr></thead>
+                <tbody id="batch-tbody"><tr><td colspan="4" class="empty-state">Loading…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Announcements Tab -->
+      <div id="tab-anns" class="tab-panel" data-tab-group="admin">
+        <div class="card">
+          <div class="card-header">
+            <h2>Announcements</h2>
+            <button class="btn btn-primary btn-sm" onclick="openModal('modal-ann')">+ Post</button>
+          </div>
+          <div class="card-body" id="anns-body">
+            <div class="empty-state">No announcements yet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add User -->
+<div class="modal-overlay" id="modal-add-user">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add New User</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-user')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group form-full"><label>Full Name</label><input id="u-name" type="text"></div>
+        <div class="form-group"><label>Email Address</label><input id="u-email" type="email"></div>
+        <div class="form-group"><label>Password</label><input id="u-password" type="password" placeholder="Min. 6 characters"></div>
+        <div class="form-group form-full"><label>Role</label>
+          <select id="u-role">
+            <option value="student">Student</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <p style="font-size:0.78rem;color:var(--g400);margin-top:0.75rem;">
+        ⚠️ Creating users via admin panel uses Supabase Auth. The user will receive a confirmation email. For bulk import use the Excel sync script.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-add-user')">Cancel</button>
+      <button class="btn btn-primary" onclick="addUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Announcement -->
+<div class="modal-overlay" id="modal-ann">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Post Announcement</h3>
+      <button class="modal-close" onclick="closeModal('modal-ann')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Title</label><input id="ann-title" type="text"></div>
+      <div class="form-group" style="margin-top:0.75rem;"><label>Content</label><textarea id="ann-content" rows="4"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-ann')">Cancel</button>
+      <button class="btn btn-primary" onclick="postAnnouncement()">Post</button>
+    </div>
+  </div>
+</div>
+
+<footer>Academy of Scientific and Innovative Research (AcSIR) — PhD Student Portal</footer>
+
+<script>
+let currentUser = null, currentProfile = null;
+
+async function init() {
+  const auth = await requireAuth(['admin']);
+  if (!auth) return;
+  currentUser    = auth.user;
+  currentProfile = auth.profile;
+  document.getElementById('navbar-root').innerHTML = renderNavbar('admin','admin.html');
+  await loadAll();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display     = 'block';
+}
+
+function showTab(group, tabId) {
+  document.querySelectorAll(`[data-group="${group}"]`).forEach(e => e.classList.remove('active'));
+  document.querySelectorAll(`[data-tab-group="${group}"]`).forEach(e => e.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  document.querySelector(`[data-group="${group}"][data-target="${tabId}"]`).classList.add('active');
+}
+
+async function loadAll() {
+  const [{ data: profiles }, { data: anns }] = await Promise.all([
+    sb.from('profiles').select('*').order('role').order('full_name'),
+    sb.from('announcements').select('*').order('created_at', { ascending: false }),
+  ]);
+
+  const students    = (profiles||[]).filter(p => p.role === 'student');
+  const supervisors = (profiles||[]).filter(p => p.role === 'supervisor');
+  const sessions    = [...new Set(students.map(s => s.session).filter(Boolean))];
+
+  // Stats
+  document.getElementById('stat-students').textContent    = students.length;
+  document.getElementById('stat-supervisors').textContent = supervisors.length;
+  document.getElementById('stat-sessions').textContent    = sessions.length;
+  document.getElementById('stat-anns').textContent        = (anns||[]).length;
+
+  // Users table
+  document.getElementById('users-tbody').innerHTML = (profiles||[]).map(p => `
+    <tr>
+      <td><strong>${p.full_name || '—'}</strong></td>
+      <td>${p.email || '—'}</td>
+      <td><span class="badge badge-${p.role}">${p.role}</span></td>
+      <td>${p.enrollment_no || '—'}</td>
+      <td>${p.session || '—'}</td>
+      <td>
+        ${p.role === 'student' ? `<button class="btn btn-outline btn-sm" onclick="viewStudent('${p.id}','${(p.full_name||'').replace(/'/g,"\\'")}')">View</button>` : ''}
+      </td>
+    </tr>`).join('') || '<tr><td colspan="6" class="empty-state">No users yet.</td></tr>';
+
+  // Batch table
+  const bySession = {};
+  students.forEach(s => {
+    const sess = s.session || 'Unassigned';
+    if (!bySession[sess]) bySession[sess] = { students: [], supervisors: new Set() };
+    bySession[sess].students.push(s);
+    if (s.supervisor_name) bySession[sess].supervisors.add(s.supervisor_name);
+  });
+  document.getElementById('batch-tbody').innerHTML = Object.entries(bySession).map(([sess, d]) => `
+    <tr>
+      <td><strong>${sess}</strong></td>
+      <td>${d.students.map(s => `<span style="font-size:0.82rem;">${s.full_name||'—'}</span>`).join(', ')}</td>
+      <td>${[...d.supervisors].join(', ') || '—'}</td>
+      <td><span class="badge badge-ongoing">${d.students.length}</span></td>
+    </tr>`).join('') || '<tr><td colspan="4" class="empty-state">No students yet.</td></tr>';
+
+  // Announcements
+  document.getElementById('anns-body').innerHTML = (anns||[]).length
+    ? anns.map(a => `
+        <div class="ann-card">
+          <div class="ann-title">${a.title}</div>
+          <div class="ann-meta">Posted by ${a.created_by} · ${new Date(a.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</div>
+          <div class="ann-body">${a.content}</div>
+        </div>`).join('')
+    : '<div class="empty-state">No announcements yet.</div>';
+}
+
+async function addUser() {
+  const name  = document.getElementById('u-name').value.trim();
+  const email = document.getElementById('u-email').value.trim();
+  const pwd   = document.getElementById('u-password').value;
+  const role  = document.getElementById('u-role').value;
+  if (!email || !pwd) { showToast('Email and password are required.', 'error'); return; }
+
+  // Use Supabase Admin API via service role — not available from anon key client
+  // Instead, guide admin to use Supabase dashboard or the Excel sync script
+  showToast('Use the Excel sync script (sync_excel.py) or Supabase Dashboard → Authentication → Users to add users. The anon key cannot create auth users directly.', 'info');
+}
+
+async function viewStudent(studentId, name) {
+  // Reuse supervisor's view logic
+  const win = window.open('', '_blank');
+  win.document.write(`<p style="font-family:sans-serif;padding:2rem;">Opening ${name}'s profile... (Use supervisor view for full details)</p>`);
+  win.close();
+  showToast(`View ${name} in Supervisor panel for full detail.`, 'info');
+}
+
+async function postAnnouncement() {
+  const title   = document.getElementById('ann-title').value.trim();
+  const content = document.getElementById('ann-content').value.trim();
+  if (!title || !content) { showToast('Title and content required.', 'error'); return; }
+  const { error } = await sb.from('announcements').insert({
+    title, content, created_by: currentProfile.full_name || currentUser.email
+  });
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  showToast('Announcement posted!');
+  closeModal('modal-ann');
+  document.getElementById('ann-title').value   = '';
+  document.getElementById('ann-content').value = '';
+  loadAll();
+}
+
+document.querySelectorAll('.modal-overlay').forEach(m =>
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); })
+);
+
+init();
+</script>
+</body>
+</html>

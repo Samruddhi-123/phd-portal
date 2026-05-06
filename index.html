@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AcSIR PhD Portal — Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#0d2340;--navy2:#1a3a5c;--teal:#0a7c6e;--teal2:#0fa896;
+  --gold:#c9a227;--gold2:#e8bf5a;--cream:#f9f6f0;
+  --white:#fff;--g100:#f3f4f6;--g200:#e5e7eb;--g400:#9ca3af;--g600:#4b5563;--g800:#1f2937;
+  --danger:#dc2626;--success:#059669;
+}
+body{font-family:'Poppins',sans-serif;background:var(--navy);min-height:100vh;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;}
+
+.bg{position:fixed;inset:0;z-index:0;}
+.bg-orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:0.15;}
+.orb1{width:600px;height:600px;background:var(--teal);top:-200px;left:-200px;}
+.orb2{width:400px;height:400px;background:var(--gold);bottom:-100px;right:-100px;}
+.orb3{width:300px;height:300px;background:var(--navy2);top:40%;left:50%;}
+
+.wrap{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;
+  background:white;border-radius:24px;box-shadow:0 40px 100px rgba(0,0,0,0.5);
+  overflow:hidden;width:min(880px,95vw);}
+
+/* LEFT PANEL */
+.left{background:linear-gradient(150deg,var(--navy) 0%,var(--navy2) 50%,var(--teal) 100%);
+  padding:3rem 2.5rem;display:flex;flex-direction:column;gap:2.5rem;position:relative;overflow:hidden;}
+.left::after{content:'';position:absolute;bottom:-60px;right:-60px;
+  width:250px;height:250px;border-radius:50%;
+  border:40px solid rgba(201,162,39,0.1);}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand-icon{width:52px;height:52px;border-radius:14px;
+  background:linear-gradient(135deg,var(--teal),var(--gold));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;font-weight:700;color:white;
+  box-shadow:0 8px 24px rgba(10,124,110,0.4);}
+.brand-text h1{font-size:1.4rem;font-weight:700;color:white;line-height:1.1;}
+.brand-text p{font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:2px;}
+.hero h2{font-size:1.9rem;font-weight:700;color:white;line-height:1.25;}
+.hero h2 span{color:var(--gold2);}
+.hero p{color:rgba(255,255,255,0.6);font-size:0.875rem;line-height:1.7;margin-top:10px;}
+.roles{display:flex;flex-direction:column;gap:8px;}
+.role-row{display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,0.06);border-radius:10px;padding:10px 14px;
+  border:1px solid rgba(255,255,255,0.08);}
+.role-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.role-info{flex:1;}
+.role-name{font-size:0.82rem;font-weight:600;color:white;}
+.role-desc{font-size:0.72rem;color:rgba(255,255,255,0.45);margin-top:1px;}
+
+/* RIGHT PANEL */
+.right{padding:3rem 2.5rem;display:flex;flex-direction:column;justify-content:center;}
+.right h3{font-size:1.6rem;font-weight:700;color:var(--navy);margin-bottom:4px;}
+.right .sub{font-size:0.85rem;color:var(--g600);margin-bottom:2rem;}
+
+.form-group{margin-bottom:1rem;}
+.form-group label{display:block;font-size:0.75rem;font-weight:600;
+  color:var(--g600);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+.input-wrap{position:relative;}
+.input-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  font-size:1rem;pointer-events:none;}
+.form-group input{width:100%;border:1.5px solid var(--g200);border-radius:10px;
+  padding:11px 12px 11px 40px;font-size:0.9rem;font-family:'Poppins',sans-serif;
+  color:var(--g800);transition:all 0.2s;background:var(--g100);}
+.form-group input:focus{outline:none;border-color:var(--teal);background:white;
+  box-shadow:0 0 0 3px rgba(10,124,110,0.1);}
+
+.btn-login{width:100%;padding:13px;
+  background:linear-gradient(135deg,var(--teal),var(--navy2));
+  color:white;border:none;border-radius:10px;font-family:'Poppins',sans-serif;
+  font-size:0.95rem;font-weight:600;cursor:pointer;
+  transition:all 0.2s;margin-top:0.5rem;position:relative;overflow:hidden;}
+.btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(10,124,110,0.35);}
+.btn-login:disabled{opacity:0.7;cursor:not-allowed;transform:none;}
+.btn-login .spinner{display:none;width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);
+  border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto;}
+.btn-login.loading .btn-text{display:none;}
+.btn-login.loading .spinner{display:block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.alert{padding:10px 14px;border-radius:8px;font-size:0.82rem;font-weight:500;
+  margin-bottom:1rem;display:none;}
+.alert.show{display:block;}
+.alert-error{background:#fee2e2;color:#991b1b;border-left:4px solid var(--danger);}
+.alert-success{background:#d1fae5;color:#065f46;border-left:4px solid var(--success);}
+
+.divider{height:1px;background:var(--g200);margin:1.5rem 0;}
+.demo{background:var(--g100);border-radius:10px;padding:1rem;border:1px solid var(--g200);}
+.demo h4{font-size:0.7rem;font-weight:700;color:var(--g600);
+  text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+.demo-row{display:flex;justify-content:space-between;align-items:center;font-size:0.78rem;padding:4px 0;}
+.demo-key{color:var(--g600);font-weight:500;}
+.demo-val{font-family:monospace;color:var(--navy);font-weight:700;
+  cursor:pointer;padding:2px 8px;background:white;border-radius:4px;
+  border:1px solid var(--g200);font-size:0.75rem;transition:all 0.15s;}
+.demo-val:hover{background:var(--teal);color:white;border-color:var(--teal);}
+
+@media(max-width:640px){.wrap{grid-template-columns:1fr;}.left{display:none;}}
+</style>
+</head>
+<body>
+<div class="bg">
+  <div class="bg-orb orb1"></div>
+  <div class="bg-orb orb2"></div>
+  <div class="bg-orb orb3"></div>
+</div>
+
+<div class="wrap">
+  <div class="left">
+    <div class="brand">
+      <div class="brand-icon">A</div>
+      <div class="brand-text">
+        <h1>AcSIR</h1>
+        <p>Academy of Scientific &amp; Innovative Research</p>
+      </div>
+    </div>
+    <div class="hero">
+      <h2>PhD Student<br><span>Management Portal</span></h2>
+      <p>Track academic milestones, courses, and research progress across all PhD programmes at TIGS.</p>
+    </div>
+    <div class="roles">
+      <div class="role-row">
+        <div class="role-dot" style="background:#ef4444;"></div>
+        <div class="role-info">
+          <div class="role-name">Administrator</div>
+          <div class="role-desc">Manage users, announcements &amp; full data access</div>
+        </div>
+      </div>
+      <div class="role-row">
+        <div class="role-dot" style="background:#8b5cf6;"></div>
+        <div class="role-info">
+          <div class="role-name">PhD Supervisor</div>
+          <div class="role-desc">View student profiles &amp; add remarks</div>
+        </div>
+      </div>
+      <div class="role-row">
+        <div class="role-dot" style="background:var(--teal2);"></div>
+        <div class="role-info">
+          <div class="role-name">PhD Student</div>
+          <div class="role-desc">Manage profile, courses &amp; timeline</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right">
+    <h3>Welcome back</h3>
+    <p class="sub">Sign in to your AcSIR account</p>
+
+    <div class="alert alert-error" id="alert-error"></div>
+    <div class="alert alert-success" id="alert-success"></div>
+
+    <div class="form-group">
+      <label>Email Address</label>
+      <div class="input-wrap">
+        <span class="input-icon">✉️</span>
+        <input type="email" id="email" placeholder="your@email.com" autocomplete="email">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔒</span>
+        <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+      </div>
+    </div>
+
+    <button class="btn-login" id="btn-login" onclick="handleLogin()">
+      <span class="btn-text">Sign In →</span>
+      <div class="spinner"></div>
+    </button>
+
+    <div class="divider"></div>
+
+    <!-- Demo credentials — update emails once real accounts are created via sync script -->
+    <div class="demo">
+      <h4>Demo Credentials — click to fill</h4>
+      <div class="demo-row">
+        <span class="demo-key">Admin:</span>
+        <span class="demo-val" onclick="fillDemo('shivranjani@acsir.res.in','AcSIR@Admin2024')">shivranjani@acsir.res.in</span>
+      </div>
+      <div class="demo-row">
+        <span class="demo-key">Supervisor:</span>
+        <span class="demo-val" onclick="fillDemo('supervisor@acsir.res.in','AcSIR@Super2024')">supervisor@acsir.res.in</span>
+      </div>
+      <div class="demo-row">
+        <span class="demo-key">Student:</span>
+        <span class="demo-val" onclick="fillDemo('sreelekshmi@acsir.res.in','AcSIR@Student2024')">sreelekshmi@acsir.res.in</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://cdztunjaymnwklvguvuu.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkenR1bmpheW1ud2tsdmd1dnV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzUxODEsImV4cCI6MjA5MjkxMTE4MX0.26Gh6ZlYYa91bPKCtKl_d-6zZ4UBGCwrOIyx4lybXG4';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Redirect if already signed in
+sb.auth.getSession().then(({ data: { session } }) => {
+  if (session) redirectByRole();
+});
+
+function showAlert(type, msg) {
+  document.querySelectorAll('.alert').forEach(a => a.classList.remove('show'));
+  const el = document.getElementById(`alert-${type}`);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function fillDemo(email, password) {
+  document.getElementById('email').value    = email;
+  document.getElementById('password').value = password;
+}
+
+async function redirectByRole() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  const { data: profile } = await sb.from('profiles').select('role').eq('id', user.id).single();
+  const role = profile?.role || user?.user_metadata?.role || 'student';
+  if      (role === 'admin')      window.location.href = 'admin.html';
+  else if (role === 'supervisor') window.location.href = 'supervisor.html';
+  else                            window.location.href = 'student.html';
+}
+
+async function handleLogin() {
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  if (!email || !password) {
+    showAlert('error', 'Please enter your email and password.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-login');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    showAlert('error', 'Invalid email or password. Please try again.');
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    return;
+  }
+  showAlert('success', 'Signed in! Redirecting…');
+  setTimeout(redirectByRole, 800);
+}
+
+// Enter key support
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleLogin();
+});
+</script>
+</body>
+</html>

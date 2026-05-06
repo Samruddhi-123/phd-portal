@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Portal — AcSIR</title>
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+</head>
+<body>
+<div id="navbar-root"></div>
+
+<div class="main">
+  <div id="loading" class="loading-screen">
+    <div class="spinner-lg"></div>
+    <p style="color:var(--g400);font-size:0.875rem;">Loading your portal…</p>
+  </div>
+
+  <div id="app" style="display:none;">
+    <div class="page-header">
+      <div class="container">
+        <h1 id="page-title">Student Dashboard</h1>
+        <p id="page-sub">Manage your profile, courses, and academic timeline</p>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="tabs">
+        <button class="tab-btn active" data-group="main" data-target="tab-profile"  onclick="showTab('main','tab-profile')">👤 Profile</button>
+        <button class="tab-btn"        data-group="main" data-target="tab-courses"  onclick="showTab('main','tab-courses')">📚 Courses</button>
+        <button class="tab-btn"        data-group="main" data-target="tab-timeline" onclick="showTab('main','tab-timeline')">📅 Timeline</button>
+        <button class="tab-btn"        data-group="main" data-target="tab-notices"  onclick="showTab('main','tab-notices')">📢 Notices</button>
+      </div>
+
+      <!-- PROFILE TAB -->
+      <div id="tab-profile" class="tab-panel active" data-tab-group="main">
+        <div class="card">
+          <div class="card-header">
+            <h2>My Profile</h2>
+            <button class="btn btn-outline btn-sm" onclick="openModal('modal-profile')">✏️ Edit Profile</button>
+          </div>
+          <div class="card-body">
+            <div class="profile-card">
+              <div id="profile-photo-wrap"><div class="profile-placeholder" id="profile-initial">S</div></div>
+              <div class="profile-info" id="profile-info"></div>
+            </div>
+            <div class="divider"></div>
+            <div id="transcripts-section"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COURSES TAB -->
+      <div id="tab-courses" class="tab-panel" data-tab-group="main">
+        <div class="card">
+          <div class="card-header">
+            <h2>Course Details</h2>
+            <button class="btn btn-primary btn-sm" onclick="openModal('modal-course')">+ Add Course</button>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Course Name</th><th>Category</th><th>Credits</th>
+                    <th>Instructor</th><th>Commencement</th><th>Status</th>
+                    <th>Grade Card</th><th>Supervisor Remarks</th>
+                  </tr>
+                </thead>
+                <tbody id="courses-tbody">
+                  <tr><td colspan="8" class="empty-state">No courses yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TIMELINE TAB -->
+      <div id="tab-timeline" class="tab-panel" data-tab-group="main">
+        <div class="tl-summary" id="tl-summary">
+          <div class="tl-stat"><span class="tl-stat-num" id="tl-done" style="color:var(--success);">0</span><span class="tl-stat-label">Completed</span></div>
+          <div class="tl-stat"><span class="tl-stat-num" id="tl-prog" style="color:var(--warning);">0</span><span class="tl-stat-label">In Progress</span></div>
+          <div class="tl-stat"><span class="tl-stat-num" id="tl-pend" style="color:var(--g400);">0</span><span class="tl-stat-label">Upcoming</span></div>
+          <div class="tl-prog-wrap">
+            <div class="tl-prog-label">Overall Progress</div>
+            <div class="tl-prog-bar"><div class="tl-prog-fill" id="tl-prog-fill" style="width:0%"></div></div>
+            <div class="tl-prog-pct" id="tl-prog-pct">0% complete</div>
+          </div>
+        </div>
+        <div class="tl-container" id="tl-container">
+          <div class="tl-spine"></div>
+          <div id="tl-items"></div>
+        </div>
+      </div>
+
+      <!-- NOTICES TAB -->
+      <div id="tab-notices" class="tab-panel" data-tab-group="main">
+        <div class="card">
+          <div class="card-header"><h2>Announcements &amp; Notices</h2></div>
+          <div class="card-body" id="notices-body">
+            <div class="empty-state">No announcements yet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edit Profile -->
+<div class="modal-overlay" id="modal-profile">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Edit Profile</h3>
+      <button class="modal-close" onclick="closeModal('modal-profile')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Full Name</label><input id="f-name" type="text"></div>
+        <div class="form-group"><label>Enrollment No.</label><input id="f-enroll" type="text"></div>
+        <div class="form-group"><label>Batch</label><input id="f-batch" type="text" placeholder="e.g. 2024"></div>
+        <div class="form-group">
+          <label>Session</label>
+          <!-- FIX: options populated by JS in init() — was using document.write() which is unreliable -->
+          <select id="f-session"><option value="">— Select —</option></select>
+        </div>
+        <div class="form-group form-full"><label>Supervisor Name</label><input id="f-supervisor" type="text"></div>
+        <div class="form-group"><label>Photo</label><input id="f-photo" type="file" accept="image/*"></div>
+        <div class="form-group"><label>Fellowship Document (PDF)</label><input id="f-fellowship" type="file" accept=".pdf,.doc,.docx"></div>
+        <div class="form-group form-full"><label>Upload Transcript(s)</label><input id="f-transcripts" type="file" multiple accept=".pdf,.doc,.docx"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-profile')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Course -->
+<div class="modal-overlay" id="modal-course">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Course</h3>
+      <button class="modal-close" onclick="closeModal('modal-course')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group form-full"><label>Course Name</label><input id="c-name" type="text"></div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="c-cat"><option>Core</option><option>Elective</option><option>TIGS</option><option>Audit</option></select>
+        </div>
+        <div class="form-group"><label>Credits</label><input id="c-credits" type="text"></div>
+        <div class="form-group"><label>Instructor</label><input id="c-instructor" type="text"></div>
+        <div class="form-group"><label>Commencement</label><input id="c-commence" type="text" placeholder="e.g. Jan 2024"></div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="c-status"><option>Pending</option><option>Ongoing</option><option>Completed</option></select>
+        </div>
+        <div class="form-group form-full"><label>Grade Card (PDF/Image)</label><input id="c-gradecard" type="file" accept=".pdf,.jpg,.jpeg,.png"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-course')">Cancel</button>
+      <button class="btn btn-primary" onclick="addCourse()">Add Course</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edit Timeline -->
+<div class="modal-overlay" id="modal-timeline">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="tl-modal-title">Update Milestone</h3>
+      <button class="modal-close" onclick="closeModal('modal-timeline')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="tl-edit-id">
+      <div class="form-grid">
+        <div class="form-group"><label>Due Date</label><input id="tl-due" type="date"></div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="tl-status"><option>Pending</option><option>Ongoing</option><option>Completed</option></select>
+        </div>
+        <div class="form-group"><label>Meeting Date</label><input id="tl-meeting" type="date"></div>
+        <div class="form-group"></div>
+        <div class="form-group"><label>DAC Form (PDF)</label><input id="tl-dac" type="file" accept=".pdf,.doc,.docx"></div>
+        <div class="form-group"><label>Work Report</label><input id="tl-report" type="file" accept=".pdf,.doc,.docx"></div>
+        <div class="form-group form-full"><label>Fee Receipt</label><input id="tl-receipt" type="file" accept=".pdf,.jpg,.jpeg,.png"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-timeline')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTimeline()">Save</button>
+    </div>
+  </div>
+</div>
+
+<footer>Academy of Scientific and Innovative Research (AcSIR) — PhD Student Portal</footer>
+
+<script>
+let currentUser = null, currentProfile = null;
+
+async function init() {
+  const auth = await requireAuth(['student']);
+  if (!auth) return;
+  currentUser    = auth.user;
+  currentProfile = auth.profile;
+
+  document.getElementById('navbar-root').innerHTML = renderNavbar('student', 'student.html');
+  document.getElementById('page-title').textContent = `Welcome, ${currentProfile.full_name || 'Student'}`;
+
+  // FIX: Populate session dropdown via JavaScript instead of document.write()
+  const sessionSel = document.getElementById('f-session');
+  for (let y = 2020; y <= 2027; y++) {
+    for (const m of ['Jan', 'Aug']) {
+      const opt = document.createElement('option');
+      opt.value = opt.textContent = `${m} ${y}`;
+      sessionSel.appendChild(opt);
+    }
+  }
+
+  await Promise.all([renderProfile(), loadCourses(), loadTimeline(), loadNotices()]);
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display     = 'block';
+}
+
+function showTab(group, tabId) {
+  document.querySelectorAll(`[data-group="${group}"]`).forEach(e => e.classList.remove('active'));
+  document.querySelectorAll(`[data-tab-group="${group}"]`).forEach(e => e.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  document.querySelector(`[data-group="${group}"][data-target="${tabId}"]`).classList.add('active');
+}
+
+// ── Profile ───────────────────────────────────────────────────
+function renderProfile() {
+  const p = currentProfile;
+  const initial = (p.full_name || 'S')[0].toUpperCase();
+  document.getElementById('profile-initial').textContent = initial;
+  if (p.photo_url) {
+    document.getElementById('profile-photo-wrap').innerHTML =
+      `<img src="${p.photo_url}" class="profile-photo" alt="Photo">`;
+  }
+  const fields = [
+    ['Full Name',      p.full_name],
+    ['Enrollment No.', p.enrollment_no],
+    ['Batch',          p.batch],
+    ['Session',        p.session],
+    ['Supervisor',     p.supervisor_name],
+    ['Fellowship',     p.fellowship_url ? `<a href="${p.fellowship_url}" class="file-link" target="_blank">📎 View</a>` : '—'],
+  ];
+  document.getElementById('profile-info').innerHTML = fields.map(([l, v]) =>
+    `<div class="info-item"><label>${l}</label><span>${v || '—'}</span></div>`
+  ).join('');
+
+  // Transcripts
+  const ts = JSON.parse((p.transcripts && p.transcripts !== "") ? p.transcripts : "[]");
+  document.getElementById('transcripts-section').innerHTML = ts.length
+    ? `<strong style="font-size:0.82rem;color:var(--navy);">Transcripts</strong>
+       <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;">
+         ${ts.map(t => `<a href="${t.url}" class="file-link" style="background:var(--g100);padding:4px 10px;border-radius:6px;" target="_blank">📄 ${t.name}</a>`).join('')}
+       </div>` : '';
+
+  // Pre-fill edit form
+  document.getElementById('f-name').value       = p.full_name || '';
+  document.getElementById('f-enroll').value     = p.enrollment_no || '';
+  document.getElementById('f-batch').value      = p.batch || '';
+  document.getElementById('f-session').value    = p.session || '';
+  document.getElementById('f-supervisor').value = p.supervisor_name || '';
+}
+
+async function saveProfile() {
+  const updates = {
+    full_name:       document.getElementById('f-name').value.trim(),
+    enrollment_no:   document.getElementById('f-enroll').value.trim(),
+    batch:           document.getElementById('f-batch').value.trim(),
+    session:         document.getElementById('f-session').value,
+    supervisor_name: document.getElementById('f-supervisor').value.trim(),
+  };
+
+  // Photo upload
+  const photoFile = document.getElementById('f-photo').files[0];
+  if (photoFile) {
+    updates.photo_url = await uploadFile(photoFile, 'uploads', `photos/${currentUser.id}`);
+  }
+
+  // Fellowship upload
+  const fellowshipFile = document.getElementById('f-fellowship').files[0];
+  if (fellowshipFile) {
+    updates.fellowship_url = await uploadFile(fellowshipFile, 'uploads', `fellowship/${currentUser.id}`);
+  }
+
+  // Transcripts — append new ones to existing list
+  const transcriptFiles = document.getElementById('f-transcripts').files;
+  if (transcriptFiles.length > 0) {
+    const existing = JSON.parse((currentProfile.transcripts && currentProfile.transcripts !== '') ? currentProfile.transcripts : '[]');
+    for (const f of transcriptFiles) {
+      const url = await uploadFile(f, 'uploads', `transcripts/${currentUser.id}`);
+      existing.push({ name: f.name, url });
+    }
+    updates.transcripts = JSON.stringify(existing);
+  }
+
+  const { error } = await sb.from('profiles').update(updates).eq('id', currentUser.id);
+  if (error) { showToast('Error saving profile: ' + error.message, 'error'); return; }
+
+  // Refresh
+  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentProfile = data;
+  renderProfile();
+  closeModal('modal-profile');
+  showToast('Profile updated!');
+}
+
+// ── Courses ───────────────────────────────────────────────────
+async function loadCourses() {
+  const { data } = await sb.from('courses')
+    .select('*').eq('student_id', currentUser.id).order('created_at');
+  const tbody = document.getElementById('courses-tbody');
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No courses yet. Click "+ Add Course" to start.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(c => `
+    <tr>
+      <td><strong>${c.course_name}</strong></td>
+      <td>${c.course_category || '—'}</td>
+      <td>${c.credit || '—'}</td>
+      <td>${c.instructor || '—'}</td>
+      <td>${c.commencement || '—'}</td>
+      <td><span class="badge badge-${(c.status || 'pending').toLowerCase()}">${c.status || 'Pending'}</span></td>
+      <td>${c.grade_card_url ? `<a href="${c.grade_card_url}" class="file-link" target="_blank">📎 View</a>` : '—'}</td>
+      <td style="font-size:0.8rem;font-style:${c.supervisor_remarks ? 'normal' : 'italic'};
+                 color:${c.supervisor_remarks ? 'inherit' : 'var(--g400)'};">
+        ${c.supervisor_remarks || 'No remarks yet'}
+      </td>
+    </tr>`).join('');
+}
+
+async function addCourse() {
+  const name = document.getElementById('c-name').value.trim();
+  if (!name) { showToast('Please enter a course name.', 'error'); return; }
+
+  let gradeUrl = null;
+  const gf = document.getElementById('c-gradecard').files[0];
+  if (gf) gradeUrl = await uploadFile(gf, 'uploads', `grade_cards/${currentUser.id}`);
+
+  const { error } = await sb.from('courses').insert({
+    student_id:      currentUser.id,
+    course_name:     name,
+    course_category: document.getElementById('c-cat').value,
+    credit:          document.getElementById('c-credits').value,
+    instructor:      document.getElementById('c-instructor').value,
+    commencement:    document.getElementById('c-commence').value,
+    status:          document.getElementById('c-status').value,
+    grade_card_url:  gradeUrl,
+  });
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  showToast('Course added!');
+  closeModal('modal-course');
+  loadCourses();
+}
+
+// ── Timeline ──────────────────────────────────────────────────
+async function loadTimeline() {
+  await ensureTimeline(currentUser.id);
+  const { data } = await sb.from('academic_timeline')
+    .select('*').eq('student_id', currentUser.id).order('checkpoint_order');
+
+  const done  = (data || []).filter(t => t.status === 'Completed').length;
+  const prog  = (data || []).filter(t => t.status === 'Ongoing').length;
+  const pend  = (data || []).length - done - prog;
+  const total = (data || []).length || 12;
+  const pct   = Math.round((done / total) * 100);
+
+  document.getElementById('tl-done').textContent     = done;
+  document.getElementById('tl-prog').textContent     = prog;
+  document.getElementById('tl-pend').textContent     = pend;
+  document.getElementById('tl-prog-fill').style.width = pct + '%';
+  document.getElementById('tl-prog-pct').textContent  = pct + '% complete';
+
+  document.getElementById('tl-items').innerHTML = (data || []).map((t, i) => {
+    const isLeft     = i % 2 === 0;
+    const status     = (t.status || 'Pending').toLowerCase();
+    const nodeClass  = status === 'completed' ? 'tl-node-completed'
+                     : status === 'ongoing'   ? 'tl-node-ongoing' : 'tl-node-pending';
+    const badgeClass = status === 'completed' ? 'tl-badge-completed'
+                     : status === 'ongoing'   ? 'tl-badge-ongoing' : 'tl-badge-pending';
+    const badgeText  = status === 'completed' ? '✓ Completed'
+                     : status === 'ongoing'   ? '⟳ In Progress' : '○ Upcoming';
+    const files = [
+      t.dac_form_url    ? `<a href="${t.dac_form_url}"    class="tl-file-chip" target="_blank">📄 DAC Form</a>`   : '',
+      t.work_report_url ? `<a href="${t.work_report_url}" class="tl-file-chip" target="_blank">📄 Work Report</a>` : '',
+      t.fee_receipt_url ? `<a href="${t.fee_receipt_url}" class="tl-file-chip" target="_blank">📄 Fee Receipt</a>` : '',
+    ].filter(Boolean).join('');
+
+    return `
+    <div class="tl-item ${isLeft ? 'tl-left' : 'tl-right'} tl-status-${status}">
+      <div class="tl-node-wrap"><div class="tl-node ${nodeClass}">${i + 1}</div></div>
+      <div class="tl-card">
+        <div class="tl-card-header">
+          <div class="tl-card-title">${t.checkpoint}</div>
+          <span class="tl-badge ${badgeClass}">${badgeText}</span>
+        </div>
+        <div class="tl-meta-row">
+          ${t.due_date     ? `<span class="tl-meta-pill">📅 Due: ${t.due_date}</span>` : ''}
+          ${t.meeting_date ? `<span class="tl-meta-pill" style="background:#eff6ff;color:#1e40af;">🕐 Meeting: ${t.meeting_date}</span>` : ''}
+        </div>
+        ${files ? `<div class="tl-files">${files}</div>` : ''}
+        ${t.supervisor_remarks ? `<div class="tl-remark">💬 ${t.supervisor_remarks}</div>` : ''}
+        <button class="tl-edit-btn"
+          onclick="openTimelineEdit('${t.id}','${t.checkpoint}','${t.due_date || ''}','${t.status || ''}','${t.meeting_date || ''}')">
+          ✏️ Update
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openTimelineEdit(id, checkpoint, due, status, meeting) {
+  document.getElementById('tl-edit-id').value              = id;
+  document.getElementById('tl-modal-title').textContent    = `Update: ${checkpoint}`;
+  document.getElementById('tl-due').value                  = due;
+  document.getElementById('tl-status').value               = status || 'Pending';
+  document.getElementById('tl-meeting').value              = meeting;
+  openModal('modal-timeline');
+}
+
+async function saveTimeline() {
+  const id = document.getElementById('tl-edit-id').value;
+  const updates = {
+    due_date:     document.getElementById('tl-due').value,
+    status:       document.getElementById('tl-status').value,
+    meeting_date: document.getElementById('tl-meeting').value,
+  };
+  const uploads = [
+    ['tl-dac',     'dac_form_url',    'dac_forms'],
+    ['tl-report',  'work_report_url', 'work_reports'],
+    ['tl-receipt', 'fee_receipt_url', 'fee_receipts'],
+  ];
+  for (const [inputId, field, folder] of uploads) {
+    const f = document.getElementById(inputId).files[0];
+    if (f) updates[field] = await uploadFile(f, 'uploads', `${folder}/${currentUser.id}`);
+  }
+  const { error } = await sb.from('academic_timeline').update(updates).eq('id', id);
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  showToast('Timeline updated!');
+  closeModal('modal-timeline');
+  loadTimeline();
+}
+
+// ── Notices ───────────────────────────────────────────────────
+async function loadNotices() {
+  const { data } = await sb.from('announcements')
+    .select('*').order('created_at', { ascending: false }).limit(10);
+  const el = document.getElementById('notices-body');
+  if (!data || data.length === 0) {
+    el.innerHTML = '<div class="empty-state">No announcements yet.</div>';
+    return;
+  }
+  el.innerHTML = data.map(a => `
+    <div class="ann-card">
+      <div class="ann-title">${a.title}</div>
+      <div class="ann-meta">
+        Posted by ${a.created_by} ·
+        ${new Date(a.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}
+      </div>
+      <div class="ann-body">${a.content}</div>
+    </div>`).join('');
+}
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(m =>
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); })
+);
+
+init();
+</script>
+</body>
+</html>

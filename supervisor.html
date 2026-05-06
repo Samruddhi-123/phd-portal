@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supervisor Portal — AcSIR</title>
+<link rel="stylesheet" href="shared.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+</head>
+<body>
+<div id="navbar-root"></div>
+
+<div class="main">
+  <div id="loading" class="loading-screen">
+    <div class="spinner-lg"></div>
+    <p style="color:var(--g400);font-size:0.875rem;">Loading…</p>
+  </div>
+
+  <div id="app" style="display:none;">
+    <div class="page-header">
+      <div class="container">
+        <h1>Supervisor Dashboard</h1>
+        <p>View and annotate your students' profiles</p>
+      </div>
+    </div>
+
+    <div class="container">
+      <div style="display:grid;grid-template-columns:280px 1fr;gap:1.5rem;align-items:start;">
+        <!-- Sidebar -->
+        <div>
+          <div class="card">
+            <div class="card-header"><h3>My Profile</h3></div>
+            <div class="card-body" style="text-align:center;">
+              <div class="profile-placeholder" id="sup-initial" style="margin:0 auto 1rem;width:80px;height:80px;font-size:2rem;">S</div>
+              <div style="font-weight:700;color:var(--navy);font-size:1rem;" id="sup-name">—</div>
+              <div style="color:var(--g400);font-size:0.78rem;margin-bottom:1rem;">PhD Supervisor</div>
+              <button class="btn btn-outline btn-sm" onclick="openModal('modal-sup-profile')" style="width:100%;">✏️ Edit</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>Students Summary</h3></div>
+            <div class="card-body" id="students-summary">
+              <div class="spinner-lg" style="width:24px;height:24px;margin:0 auto;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Students List -->
+        <div>
+          <div class="card">
+            <div class="card-header"><h2>Session-wise Students</h2></div>
+            <div class="card-body" style="padding:0;" id="students-list">
+              <div class="empty-state" style="padding:2rem;">Loading students…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Student Detail Modal -->
+<div class="modal-overlay" id="modal-student" style="align-items:flex-start;padding:2rem 1rem;overflow-y:auto;">
+  <div class="modal" style="max-width:800px;width:95%;max-height:none;">
+    <div class="modal-header">
+      <h3 id="modal-student-name">Student Profile</h3>
+      <button class="modal-close" onclick="closeModal('modal-student')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-student-body"></div>
+  </div>
+</div>
+
+<!-- Supervisor Profile Modal -->
+<div class="modal-overlay" id="modal-sup-profile">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Edit Profile</h3>
+      <button class="modal-close" onclick="closeModal('modal-sup-profile')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Full Name</label><input id="sp-name" type="text"></div>
+      <div class="form-group" style="margin-top:0.75rem;"><label>Photo</label><input id="sp-photo" type="file" accept="image/*"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-sup-profile')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSupProfile()">Save</button>
+    </div>
+  </div>
+</div>
+
+<footer>Academy of Scientific and Innovative Research (AcSIR) — PhD Student Portal</footer>
+
+<script>
+let currentUser = null, currentProfile = null;
+
+async function init() {
+  const auth = await requireAuth(['supervisor']);
+  if (!auth) return;
+  currentUser    = auth.user;
+  currentProfile = auth.profile;
+
+  document.getElementById('navbar-root').innerHTML = renderNavbar('supervisor','supervisor.html');
+  document.getElementById('sup-name').textContent = currentProfile.full_name || 'Supervisor';
+  document.getElementById('sup-initial').textContent = (currentProfile.full_name || 'S')[0].toUpperCase();
+  document.getElementById('sp-name').value = currentProfile.full_name || '';
+
+  await loadStudents();
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display     = 'block';
+}
+
+async function loadStudents() {
+  const myName = (currentProfile.full_name || '').toLowerCase();
+  const { data: students } = await sb.from('profiles')
+    .select('*').eq('role','student').order('full_name');
+
+  // Filter students who have this supervisor
+  const mine = (students||[]).filter(s =>
+    (s.supervisor_name||'').toLowerCase().includes(myName) && myName
+  );
+
+  // Summary
+  const bySession = {};
+  mine.forEach(s => {
+    const sess = s.session || 'Unassigned';
+    if (!bySession[sess]) bySession[sess] = [];
+    bySession[sess].push(s);
+  });
+
+  document.getElementById('students-summary').innerHTML = `
+    <div style="font-size:1.8rem;font-weight:700;color:var(--navy);">${mine.length}</div>
+    <div style="font-size:0.7rem;color:var(--g400);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:0.75rem;">Total Students</div>
+    <div class="divider" style="margin:0.75rem 0;"></div>
+    ${Object.entries(bySession).map(([sess, sts]) => `
+      <div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:3px 0;">
+        <span style="color:var(--g600);">${sess}</span>
+        <span class="badge badge-ongoing">${sts.length}</span>
+      </div>`).join('')}
+    ${mine.length === 0 ? '<p style="font-size:0.8rem;color:var(--g400);font-style:italic;">No students assigned yet.</p>' : ''}
+  `;
+
+  // Students list
+  if (mine.length === 0) {
+    document.getElementById('students-list').innerHTML =
+      '<div class="empty-state" style="padding:2rem;">No students found with your name as supervisor.<br>Students must enter your exact name in their profile.</div>';
+    return;
+  }
+
+  document.getElementById('students-list').innerHTML =
+    Object.entries(bySession).map(([sess, sts]) => `
+      <details open style="border-bottom:1px solid var(--g200);">
+        <summary style="padding:0.75rem 1.5rem;cursor:pointer;font-weight:600;font-size:0.875rem;color:var(--navy);
+          background:var(--g100);list-style:none;display:flex;justify-content:space-between;align-items:center;">
+          <span>Session: ${sess}</span>
+          <span class="badge badge-ongoing">${sts.length} student${sts.length!==1?'s':''}</span>
+        </summary>
+        <table>
+          <thead><tr><th>Name</th><th>Enrollment No.</th><th>Batch</th><th>Action</th></tr></thead>
+          <tbody>
+            ${sts.map(s => `
+              <tr>
+                <td><strong>${s.full_name || '—'}</strong></td>
+                <td>${s.enrollment_no || '—'}</td>
+                <td>${s.batch || '—'}</td>
+                <td><button class="btn btn-outline btn-sm" onclick="viewStudent('${s.id}','${(s.full_name||'').replace(/'/g,"\\'")}')">View Profile →</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </details>`).join('');
+}
+
+async function viewStudent(studentId, name) {
+  document.getElementById('modal-student-name').textContent = name;
+  document.getElementById('modal-student-body').innerHTML = '<div class="loading-screen" style="min-height:200px;"><div class="spinner-lg"></div></div>';
+  openModal('modal-student');
+
+  const [{ data: profile }, { data: courses }, { data: timeline }] = await Promise.all([
+    sb.from('profiles').select('*').eq('id', studentId).single(),
+    sb.from('courses').select('*').eq('student_id', studentId).order('created_at'),
+    sb.from('academic_timeline').select('*').eq('student_id', studentId).order('checkpoint_order'),
+  ]);
+
+  document.getElementById('modal-student-body').innerHTML = `
+    <!-- Profile summary -->
+    <div class="profile-card" style="margin-bottom:1.5rem;">
+      <div class="profile-placeholder" style="width:70px;height:70px;font-size:1.8rem;">${(profile.full_name||'S')[0].toUpperCase()}</div>
+      <div class="profile-info">
+        ${[['Name',profile.full_name],['Enrollment',profile.enrollment_no],['Batch',profile.batch],['Session',profile.session]].map(([l,v])=>
+          `<div class="info-item"><label>${l}</label><span>${v||'—'}</span></div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Courses -->
+    <div style="font-weight:700;color:var(--navy);font-size:0.9rem;margin-bottom:0.75rem;">📚 Courses</div>
+    <div class="table-wrap" style="margin-bottom:1.5rem;">
+      <table>
+        <thead><tr><th>Course</th><th>Credits</th><th>Status</th><th>Remarks</th><th>Save</th></tr></thead>
+        <tbody>
+          ${(courses||[]).map(c => `
+            <tr>
+              <td><strong>${c.course_name}</strong></td>
+              <td>${c.credit||'—'}</td>
+              <td><span class="badge badge-${(c.status||'pending').toLowerCase()}">${c.status||'Pending'}</span></td>
+              <td><input type="text" value="${c.supervisor_remarks||''}" id="cr-${c.id}"
+                style="border:1px solid var(--g200);border-radius:6px;padding:4px 8px;font-size:0.8rem;width:160px;font-family:'Poppins',sans-serif;"></td>
+              <td><button class="btn btn-primary btn-sm" onclick="saveRemark('courses','${c.id}','cr-${c.id}')">Save</button></td>
+            </tr>`).join('')}
+          ${!courses?.length ? '<tr><td colspan="5" class="empty-state">No courses.</td></tr>' : ''}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Timeline -->
+    <div style="font-weight:700;color:var(--navy);font-size:0.9rem;margin-bottom:0.75rem;">📅 Academic Timeline</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Checkpoint</th><th>Status</th><th>Due Date</th><th>Remarks</th><th>Save</th></tr></thead>
+        <tbody>
+          ${(timeline||[]).map(t => `
+            <tr>
+              <td><strong>${t.checkpoint}</strong></td>
+              <td><span class="badge badge-${(t.status||'pending').toLowerCase()}">${t.status||'Pending'}</span></td>
+              <td>${t.due_date||'—'}</td>
+              <td><input type="text" value="${t.supervisor_remarks||''}" id="tr-${t.id}"
+                style="border:1px solid var(--g200);border-radius:6px;padding:4px 8px;font-size:0.8rem;width:160px;font-family:'Poppins',sans-serif;"></td>
+              <td><button class="btn btn-primary btn-sm" onclick="saveRemark('academic_timeline','${t.id}','tr-${t.id}')">Save</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function saveRemark(table, id, inputId) {
+  const remark = document.getElementById(inputId).value;
+  const { error } = await sb.from(table).update({ supervisor_remarks: remark }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  showToast('Remark saved!');
+}
+
+async function saveSupProfile() {
+  const updates = { full_name: document.getElementById('sp-name').value.trim() };
+  const photo = document.getElementById('sp-photo').files[0];
+  if (photo) updates.photo_url = await uploadFile(photo, 'uploads', `photos/${currentUser.id}`);
+  await sb.from('profiles').update(updates).eq('id', currentUser.id);
+  currentProfile.full_name = updates.full_name;
+  document.getElementById('sup-name').textContent = updates.full_name;
+  document.getElementById('sup-initial').textContent = (updates.full_name||'S')[0].toUpperCase();
+  closeModal('modal-sup-profile');
+  showToast('Profile updated!');
+  loadStudents();
+}
+
+document.querySelectorAll('.modal-overlay').forEach(m =>
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); })
+);
+
+init();
+</script>
+</body>
+</html>
