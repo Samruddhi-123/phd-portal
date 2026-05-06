@@ -257,7 +257,7 @@ function renderProfile() {
   ).join('');
 
   // Transcripts
-  const ts = JSON.parse((p.transcripts && p.transcripts !== "") ? p.transcripts : "[]");
+  const ts = Array.isArray(p.transcripts) ? p.transcripts : JSON.parse((p.transcripts && p.transcripts !== "") ? p.transcripts : "[]");
   document.getElementById('transcripts-section').innerHTML = ts.length
     ? `<strong style="font-size:0.82rem;color:var(--navy);">Transcripts</strong>
        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;">
@@ -296,7 +296,7 @@ async function saveProfile() {
   // Transcripts — append new ones to existing list
   const transcriptFiles = document.getElementById('f-transcripts').files;
   if (transcriptFiles.length > 0) {
-    const existing = JSON.parse((currentProfile.transcripts && currentProfile.transcripts !== '') ? currentProfile.transcripts : '[]');
+    const existing = Array.isArray(currentProfile.transcripts) ? currentProfile.transcripts : JSON.parse((currentProfile.transcripts && currentProfile.transcripts !== '') ? currentProfile.transcripts : '[]');
     for (const f of transcriptFiles) {
       const url = await uploadFile(f, 'uploads', `transcripts/${currentUser.id}`);
       existing.push({ name: f.name, url });
