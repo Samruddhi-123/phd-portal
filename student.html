@@ -66,7 +66,7 @@
                   <tr>
                     <th>Course Name</th><th>Category</th><th>Credits</th>
                     <th>Instructor</th><th>Commencement</th><th>Status</th>
-                    <th>Grade Card</th><th>Supervisor Remarks</th>
+                    <th>Grade Card</th><th>Supervisor Remarks</th><th></th>
                   </tr>
                 </thead>
                 <tbody id="courses-tbody">
@@ -380,6 +380,15 @@ async function saveProfile() {
 }
 
 // ── Courses ───────────────────────────────────────────────────
+
+async function deleteCourse(id, name) {
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  const { error } = await sb.from('courses').delete().eq('id', id).eq('student_id', currentUser.id);
+  if (error) { showToast('Error deleting course: ' + error.message, 'error'); return; }
+  showToast('Course deleted.');
+  loadCourses();
+}
+
 async function loadCourses() {
   const { data } = await sb.from('courses')
     .select('*').eq('student_id', currentUser.id).order('created_at');
@@ -401,6 +410,7 @@ async function loadCourses() {
                  color:${c.supervisor_remarks ? 'inherit' : 'var(--g400)'};">
         ${c.supervisor_remarks || 'No remarks yet'}
       </td>
+      <td><button class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#dc2626;" onclick="deleteCourse('${c.id}', '${c.course_name.replace(/'/g,"\\'")}')" title="Delete course">🗑</button></td>
     </tr>`).join('');
 }
 
