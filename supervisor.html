@@ -35,7 +35,8 @@
               <div class="profile-placeholder" id="sup-initial" style="margin:0 auto 1rem;width:80px;height:80px;font-size:2rem;">S</div>
               <div style="font-weight:700;color:var(--navy);font-size:1rem;" id="sup-name">—</div>
               <div style="color:var(--g400);font-size:0.78rem;margin-bottom:1rem;">PhD Supervisor</div>
-              <button class="btn btn-outline btn-sm" onclick="openModal('modal-sup-profile')" style="width:100%;">✏️ Edit</button>
+              <button class="btn btn-outline btn-sm" onclick="openModal('modal-sup-profile')" style="width:100%;">✏️ Edit Profile</button>
+              <button class="btn btn-outline btn-sm" onclick="openModal('modal-change-pw')" style="width:100%;margin-top:8px;">🔑 Change Password</button>
             </div>
           </div>
           <div class="card">
@@ -89,10 +90,64 @@
   </div>
 </div>
 
+
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="modal-change-pw">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Change Password</h3>
+      <button class="modal-close" onclick="closeModal('modal-change-pw')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Current Password</label><input type="password" id="pw-current" class="form-input" placeholder="Enter current password"/></div>
+      <div class="form-group" style="margin-top:0.75rem;"><label class="form-label">New Password</label><input type="password" id="pw-new" class="form-input" placeholder="Minimum 8 characters"/></div>
+      <div class="form-group" style="margin-top:0.75rem;"><label class="form-label">Confirm New Password</label><input type="password" id="pw-confirm" class="form-input" placeholder="Re-enter new password"/></div>
+      <div id="pw-msg" style="display:none;margin-top:0.75rem;padding:10px 14px;border-radius:8px;font-size:0.82rem;font-weight:500;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-change-pw')">Cancel</button>
+      <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+    </div>
+  </div>
+</div>
+
 <footer>Academy of Scientific and Innovative Research (AcSIR) — PhD Student Portal</footer>
 
 <script>
 let currentUser = null, currentProfile = null;
+
+
+async function changePassword() {
+  const current = document.getElementById('pw-current').value;
+  const newPw   = document.getElementById('pw-new').value;
+  const confirm = document.getElementById('pw-confirm').value;
+  const msg     = document.getElementById('pw-msg');
+
+  function showPwMsg(text, ok) {
+    msg.style.display    = 'block';
+    msg.style.background = ok ? '#d1fae5' : '#fee2e2';
+    msg.style.color      = ok ? '#065f46' : '#991b1b';
+    msg.style.borderLeft = ok ? '4px solid #059669' : '4px solid #dc2626';
+    msg.textContent = text;
+  }
+
+  if (!current || !newPw || !confirm) return showPwMsg('Please fill in all fields.', false);
+  if (newPw.length < 8)              return showPwMsg('New password must be at least 8 characters.', false);
+  if (newPw !== confirm)             return showPwMsg('Passwords do not match.', false);
+
+  const { error: signInError } = await sb.auth.signInWithPassword({
+    email: currentUser.email, password: current
+  });
+  if (signInError) return showPwMsg('Current password is incorrect.', false);
+
+  const { error } = await sb.auth.updateUser({ password: newPw });
+  if (error) return showPwMsg('Error: ' + error.message, false);
+
+  showPwMsg('Password updated successfully!', true);
+  document.getElementById('pw-current').value = '';
+  document.getElementById('pw-new').value     = '';
+  document.getElementById('pw-confirm').value = '';
+}
 
 async function init() {
   const auth = await requireAuth(['supervisor']);
