@@ -174,10 +174,47 @@
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group form-full"><label>Course Name</label><input id="c-name" type="text"></div>
+        <div class="form-group form-full">
+          <label>Course Name</label>
+          <select id="c-name-select" onchange="onCourseSelect(this)" style="margin-bottom:6px;">
+            <option value="">— Select or type below —</option>
+        <optgroup label="Mandatory">
+          <option value="Research Methodology" data-credits="4" data-cat="Mandatory">Research Methodology (4 credits)</option>
+          <option value="Research and Publication Ethics" data-credits="2" data-cat="Mandatory">Research and Publication Ethics (2 credits)</option>
+        </optgroup>
+        <optgroup label="Elective (Interdisciplinary)">
+          <option value="Statistics for Biologists (Biostatistics)" data-credits="2" data-cat="Elective (Interdisciplinary)">Statistics for Biologists (Biostatistics) (2 credits)</option>
+          <option value="Introduction to Programming" data-credits="3" data-cat="Elective (Interdisciplinary)">Introduction to Programming (3 credits)</option>
+          <option value="Fundamentals of Science Communication" data-credits="" data-cat="Elective (Interdisciplinary)">Fundamentals of Science Communication</option>
+          <option value="Critical Thinking and Writing for Scientists" data-credits="" data-cat="Elective (Interdisciplinary)">Critical Thinking and Writing for Scientists</option>
+          <option value="Global Change and Biosphere" data-credits="2" data-cat="Elective (Interdisciplinary)">Global Change and Biosphere (2 credits)</option>
+        </optgroup>
+        <optgroup label="Elective Advanced">
+          <option value="Developmental Biology" data-credits="3" data-cat="Elective Advanced">Developmental Biology (3 credits)</option>
+          <option value="Fundamentals of Molecular Biology" data-credits="2" data-cat="Elective Advanced">Fundamentals of Molecular Biology (2 credits)</option>
+          <option value="Biochemistry and Biophysics" data-credits="2" data-cat="Elective Advanced">Biochemistry and Biophysics (2 credits)</option>
+          <option value="RNA Biology" data-credits="2" data-cat="Elective Advanced">RNA Biology (2 credits)</option>
+          <option value="Biology of Bacterial Genomes" data-credits="3" data-cat="Elective Advanced">Biology of Bacterial Genomes (3 credits)</option>
+          <option value="Window into the Cell" data-credits="3" data-cat="Elective Advanced">Window into the Cell (3 credits)</option>
+          <option value="Advances in Evolutionary Genetics" data-credits="2" data-cat="Elective Advanced">Advances in Evolutionary Genetics (2 credits)</option>
+          <option value="Statistical Inference in Biology" data-credits="" data-cat="Elective Advanced">Statistical Inference in Biology</option>
+          <option value="Introduction to Cell Biology" data-credits="3" data-cat="Elective Advanced">Introduction to Cell Biology (3 credits)</option>
+          <option value="Stem Cell Biology and Genome Engineering" data-credits="2" data-cat="Elective Advanced">Stem Cell Biology and Genome Engineering (2 credits)</option>
+          <option value="Basic Neurobiology" data-credits="3" data-cat="Elective Advanced">Basic Neurobiology (3 credits)</option>
+        </optgroup>
+        <optgroup label="Societal Program"><option value="" disabled>— To be added —</option></optgroup>
+          </select>
+          <input id="c-name" type="text" placeholder="Or type custom course name…" style="margin-top:4px;">
+        </div>
         <div class="form-group">
           <label>Category</label>
-          <select id="c-cat"><option>Core</option><option>Elective</option><option>TIGS</option><option>Audit</option></select>
+          <select id="c-cat">
+            <option value="Mandatory">Mandatory</option>
+            <option value="Elective (Interdisciplinary)">Elective (Interdisciplinary)</option>
+            <option value="Elective Advanced">Elective Advanced</option>
+            <option value="Societal Program">Societal Program</option>
+            <option value="Audit">Audit</option>
+          </select>
         </div>
         <div class="form-group"><label>Credits</label><input id="c-credits" type="text"></div>
         <div class="form-group"><label>Instructor</label><input id="c-instructor" type="text"></div>
@@ -365,6 +402,23 @@ async function loadCourses() {
         ${c.supervisor_remarks || 'No remarks yet'}
       </td>
     </tr>`).join('');
+}
+
+
+function onCourseSelect(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt.value) return;
+  // Fill course name input
+  document.getElementById('c-name').value = opt.value;
+  // Auto-fill credits
+  const cr = opt.getAttribute('data-credits');
+  if (cr) document.getElementById('c-credits').value = cr;
+  // Auto-fill category
+  const cat = opt.getAttribute('data-cat');
+  if (cat) {
+    const catSel = document.getElementById('c-cat');
+    for (let o of catSel.options) { if (o.value === cat) { catSel.value = cat; break; } }
+  }
 }
 
 async function addCourse() {
