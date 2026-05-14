@@ -175,24 +175,6 @@ body{font-family:'Poppins',sans-serif;background:var(--navy);min-height:100vh;
       <div class="spinner"></div>
     </button>
 
-    <div class="divider"></div>
-
-    <!-- Demo credentials — update emails once real accounts are created via sync script -->
-    <div class="demo">
-      <h4>Demo Credentials — click to fill</h4>
-      <div class="demo-row">
-        <span class="demo-key">Admin:</span>
-        <span class="demo-val" onclick="fillDemo('shivranjani@acsir.res.in','AcSIR@Admin2024')">shivranjani@acsir.res.in</span>
-      </div>
-      <div class="demo-row">
-        <span class="demo-key">Supervisor:</span>
-        <span class="demo-val" onclick="fillDemo('supervisor@acsir.res.in','AcSIR@Super2024')">supervisor@acsir.res.in</span>
-      </div>
-      <div class="demo-row">
-        <span class="demo-key">Student:</span>
-        <span class="demo-val" onclick="fillDemo('sreelekshmi@acsir.res.in','AcSIR@Student2024')">sreelekshmi@acsir.res.in</span>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -214,10 +196,6 @@ function showAlert(type, msg) {
   el.classList.add('show');
 }
 
-function fillDemo(email, password) {
-  document.getElementById('email').value    = email;
-  document.getElementById('password').value = password;
-}
 
 async function redirectByRole() {
   const { data: { user } } = await sb.auth.getUser();

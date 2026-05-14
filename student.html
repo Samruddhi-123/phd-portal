@@ -31,6 +31,7 @@
         <button class="tab-btn"        data-group="main" data-target="tab-courses"  onclick="showTab('main','tab-courses')">📚 Courses</button>
         <button class="tab-btn"        data-group="main" data-target="tab-timeline" onclick="showTab('main','tab-timeline')">📅 Timeline</button>
         <button class="tab-btn"        data-group="main" data-target="tab-notices"  onclick="showTab('main','tab-notices')">📢 Notices</button>
+        <button class="tab-btn"        data-group="main" data-target="tab-account"  onclick="showTab('main','tab-account')">⚙️ Account</button>
       </div>
 
       <!-- PROFILE TAB -->
@@ -103,6 +104,32 @@
             <div class="empty-state">No announcements yet.</div>
           </div>
         </div>
+
+      <!-- ACCOUNT TAB -->
+      <div id="tab-account" class="tab-panel" data-tab-group="main">
+        <div class="card">
+          <div class="card-header"><h2>Account Settings</h2></div>
+          <div class="card-body">
+            <div style="max-width:420px;">
+              <h3 style="font-size:1rem;font-weight:600;color:var(--navy);margin-bottom:1.2rem;">Change Password</h3>
+              <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <input type="password" id="pw-current" class="form-input" placeholder="Enter current password"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" id="pw-new" class="form-input" placeholder="Minimum 8 characters"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" id="pw-confirm" class="form-input" placeholder="Re-enter new password"/>
+              </div>
+              <div id="pw-msg" style="display:none;padding:10px 14px;border-radius:8px;font-size:0.82rem;font-weight:500;margin-bottom:1rem;"></div>
+              <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   </div>
@@ -257,7 +284,7 @@ function renderProfile() {
   ).join('');
 
   // Transcripts
-  const ts = Array.isArray(p.transcripts) ? p.transcripts : JSON.parse((p.transcripts && p.transcripts !== "") ? p.transcripts : "[]");
+  const ts = JSON.parse((p.transcripts && p.transcripts !== "") ? p.transcripts : "[]");
   document.getElementById('transcripts-section').innerHTML = ts.length
     ? `<strong style="font-size:0.82rem;color:var(--navy);">Transcripts</strong>
        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;">
@@ -296,7 +323,7 @@ async function saveProfile() {
   // Transcripts — append new ones to existing list
   const transcriptFiles = document.getElementById('f-transcripts').files;
   if (transcriptFiles.length > 0) {
-    const existing = Array.isArray(currentProfile.transcripts) ? currentProfile.transcripts : JSON.parse((currentProfile.transcripts && currentProfile.transcripts !== '') ? currentProfile.transcripts : '[]');
+    const existing = JSON.parse((currentProfile.transcripts && currentProfile.transcripts !== '') ? currentProfile.transcripts : '[]');
     for (const f of transcriptFiles) {
       const url = await uploadFile(f, 'uploads', `transcripts/${currentUser.id}`);
       existing.push({ name: f.name, url });
@@ -478,6 +505,40 @@ document.querySelectorAll('.modal-overlay').forEach(m =>
 );
 
 init();
+
+async function changePassword() {
+  const current = document.getElementById('pw-current').value;
+  const newPw   = document.getElementById('pw-new').value;
+  const confirm = document.getElementById('pw-confirm').value;
+  const msg     = document.getElementById('pw-msg');
+
+  function showPwMsg(text, ok) {
+    msg.style.display = 'block';
+    msg.style.background  = ok ? '#d1fae5' : '#fee2e2';
+    msg.style.color        = ok ? '#065f46' : '#991b1b';
+    msg.style.borderLeft   = ok ? '4px solid #059669' : '4px solid #dc2626';
+    msg.textContent = text;
+  }
+
+  if (!current || !newPw || !confirm) return showPwMsg('Please fill in all fields.', false);
+  if (newPw.length < 8)               return showPwMsg('New password must be at least 8 characters.', false);
+  if (newPw !== confirm)              return showPwMsg('Passwords do not match.', false);
+
+  // Re-authenticate with current password first
+  const { error: signInError } = await sb.auth.signInWithPassword({
+    email: currentUser.email, password: current
+  });
+  if (signInError) return showPwMsg('Current password is incorrect.', false);
+
+  // Update password
+  const { error } = await sb.auth.updateUser({ password: newPw });
+  if (error) return showPwMsg('Error: ' + error.message, false);
+
+  showPwMsg('Password updated successfully!', true);
+  document.getElementById('pw-current').value = '';
+  document.getElementById('pw-new').value = '';
+  document.getElementById('pw-confirm').value = '';
+}
 </script>
 </body>
 </html>
